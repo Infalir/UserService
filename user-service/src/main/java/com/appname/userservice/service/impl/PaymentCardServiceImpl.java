@@ -41,6 +41,9 @@ public class PaymentCardServiceImpl implements PaymentCardService {
 
   @Override
   @Transactional
+  @Caching(evict = {
+          @CacheEvict(value = CacheConstants.USERS_CACHE, key = "#userId")
+  })
   public PaymentCardResponse createCard(Long userId, CreatePaymentCardRequest request) {
     User user = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User", userId));
 
@@ -61,6 +64,7 @@ public class PaymentCardServiceImpl implements PaymentCardService {
   }
 
   @Override
+  @Cacheable(value = CacheConstants.CARDS_CACHE, key = "#id")
   public PaymentCardResponse getCardById(Long id) {
     log.info("Fetching card with id: {} (cache miss)", id);
     return cardMapper.toResponse(findCardOrThrow(id));
@@ -85,6 +89,7 @@ public class PaymentCardServiceImpl implements PaymentCardService {
 
   @Override
   @Transactional
+  @CachePut(value = CacheConstants.CARDS_CACHE, key = "#id")
   public PaymentCardResponse updateCard(Long id, UpdatePaymentCardRequest request) {
     PaymentCard card = findCardOrThrow(id);
     cardMapper.updateEntityFromRequest(request, card);
@@ -95,6 +100,7 @@ public class PaymentCardServiceImpl implements PaymentCardService {
 
   @Override
   @Transactional
+  @CacheEvict(value = CacheConstants.CARDS_CACHE, key = "#id")
   public void activateCard(Long id) {
     findCardOrThrow(id);
     cardRepository.updateActiveStatus(id, true);
@@ -103,6 +109,7 @@ public class PaymentCardServiceImpl implements PaymentCardService {
 
   @Override
   @Transactional
+  @CacheEvict(value = CacheConstants.CARDS_CACHE, key = "#id")
   public void deactivateCard(Long id) {
     findCardOrThrow(id);
     cardRepository.updateActiveStatus(id, false);
@@ -111,6 +118,9 @@ public class PaymentCardServiceImpl implements PaymentCardService {
 
   @Override
   @Transactional
+  @Caching(evict = {
+          @CacheEvict(value = CacheConstants.CARDS_CACHE, key = "#id")
+  })
   public void deleteCard(Long id) {
     PaymentCard card = findCardOrThrow(id);
     cardRepository.delete(card);

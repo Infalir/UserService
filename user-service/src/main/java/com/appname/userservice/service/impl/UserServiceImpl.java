@@ -43,6 +43,7 @@ public class UserServiceImpl implements UserService {
   }
 
   @Override
+  @Cacheable(value = CacheConstants.USERS_CACHE, key = "#id")
   public UserResponse getUserById(Long id) {
     log.info("Fetching user with id: {} (cache miss)", id);
     User user = findUserOrThrow(id);
@@ -59,6 +60,7 @@ public class UserServiceImpl implements UserService {
 
   @Override
   @Transactional
+  @CachePut(value = CacheConstants.USERS_CACHE, key = "#id")
   public UserResponse updateUser(Long id, UpdateUserRequest request) {
     User user = findUserOrThrow(id);
     if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
@@ -74,6 +76,7 @@ public class UserServiceImpl implements UserService {
 
   @Override
   @Transactional
+  @CacheEvict(value = CacheConstants.USERS_CACHE, key = "#id")
   public void activateUser(Long id) {
     findUserOrThrow(id);
     userRepository.updateActiveStatus(id, true);
@@ -82,6 +85,7 @@ public class UserServiceImpl implements UserService {
 
   @Override
   @Transactional
+  @CacheEvict(value = CacheConstants.USERS_CACHE, key = "#id")
   public void deactivateUser(Long id) {
     findUserOrThrow(id);
     userRepository.updateActiveStatus(id, false);
@@ -90,6 +94,7 @@ public class UserServiceImpl implements UserService {
 
   @Override
   @Transactional
+  @CacheEvict(value = CacheConstants.USERS_CACHE, key = "#id")
   public void deleteUser(Long id) {
     findUserOrThrow(id);
     userRepository.deleteById(id);
