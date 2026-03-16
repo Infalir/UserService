@@ -38,6 +38,7 @@ class PaymentCardServiceImplTest {
   private User user;
   private PaymentCard card;
   private PaymentCardResponse cardResponse;
+  private PaymentCardResponse inactiveCardResponse;
   private CreatePaymentCardRequest createRequest;
 
   @BeforeEach
@@ -52,6 +53,12 @@ class PaymentCardServiceImplTest {
     cardResponse.setUserId(1L);
     cardResponse.setNumber("1234567890123456");
     cardResponse.setHolder("JOHN DOE");
+    cardResponse.setActive(true);
+
+    inactiveCardResponse = new PaymentCardResponse();
+    inactiveCardResponse.setId(1L);
+    inactiveCardResponse.setUserId(1L);
+    inactiveCardResponse.setActive(false);
 
     createRequest = new CreatePaymentCardRequest();
     createRequest.setNumber("1234567890123456");
@@ -62,8 +69,8 @@ class PaymentCardServiceImplTest {
   @Test
   @DisplayName("createCard - success")
   void createCard_Success() {
-    when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-    when(cardRepository.countCardsByUserId(1L)).thenReturn(0L);
+    when(userRepository.findByIdWithLock(1L)).thenReturn(Optional.of(user));
+    when(cardRepository.countActiveCardsByUserId(1L)).thenReturn(4L);
     when(cardRepository.existsByNumber(createRequest.getNumber())).thenReturn(false);
     when(cardMapper.toEntity(createRequest)).thenReturn(card);
     when(cardRepository.save(card)).thenReturn(card);
@@ -79,8 +86,8 @@ class PaymentCardServiceImplTest {
   @Test
   @DisplayName("createCard - throws CardLimitExceededException when user has 5 cards")
   void createCard_LimitExceeded_ThrowsException() {
-    when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-    when(cardRepository.countCardsByUserId(1L)).thenReturn(5L);
+    when(userRepository.findByIdWithLock(1L)).thenReturn(Optional.of(user));
+    when(cardRepository.countActiveCardsByUserId(1L)).thenReturn(5L);
 
     assertThatThrownBy(() -> cardService.createCard(1L, createRequest)).isInstanceOf(CardLimitExceededException.class)
             .hasMessageContaining("1");
@@ -89,10 +96,38 @@ class PaymentCardServiceImplTest {
   }
 
   @Test
+  @DisplayName("createCard - allows new card when deactivated cards exist (only active cards counted)")
+  void createCard_WithDeactivatedCards_AllowsNewCard() {
+    when(userRepository.findByIdWithLock(1L)).thenReturn(Optional.of(user));
+    when(cardRepository.countActiveCardsByUserId(1L)).thenReturn(3L);
+    when(cardRepository.existsByNumber(createRequest.getNumber())).thenReturn(false);
+    when(cardMapper.toEntity(createRequest)).thenReturn(card);
+    when(cardRepository.save(card)).thenReturn(card);
+    when(cardMapper.toResponse(card)).thenReturn(cardResponse);
+
+    PaymentCardResponse result = cardService.createCard(1L, createRequest);
+
+    assertThat(result).isNotNull();
+    verify(cardRepository).save(card);
+  }
+
+  @Test
+  @DisplayName("createCard - throws CardLimitExceededException on concurrent requests when count reaches 5 after lock")
+  void createCard_ConcurrentRequest_LimitEnforcedAfterLock() {
+    when(userRepository.findByIdWithLock(1L)).thenReturn(Optional.of(user));
+    when(cardRepository.countActiveCardsByUserId(1L)).thenReturn(5L);
+
+    assertThatThrownBy(() -> cardService.createCard(1L, createRequest))
+            .isInstanceOf(CardLimitExceededException.class);
+
+    verify(cardRepository, never()).save(any());
+  }
+
+  @Test
   @DisplayName("createCard - throws DuplicateResourceException when card number exists")
   void createCard_DuplicateNumber_ThrowsException() {
-    when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-    when(cardRepository.countCardsByUserId(1L)).thenReturn(2L);
+    when(userRepository.findByIdWithLock(1L)).thenReturn(Optional.of(user));
+    when(cardRepository.countActiveCardsByUserId(1L)).thenReturn(2L);
     when(cardRepository.existsByNumber(createRequest.getNumber())).thenReturn(true);
 
     assertThatThrownBy(() -> cardService.createCard(1L, createRequest)).isInstanceOf(DuplicateResourceException.class);
@@ -103,7 +138,7 @@ class PaymentCardServiceImplTest {
   @Test
   @DisplayName("createCard - throws ResourceNotFoundException when user not found")
   void createCard_UserNotFound_ThrowsException() {
-    when(userRepository.findById(99L)).thenReturn(Optional.empty());
+    when(userRepository.findByIdWithLock(99L)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> cardService.createCard(99L, createRequest)).isInstanceOf(ResourceNotFoundException.class);
   }
@@ -143,11 +178,29 @@ class PaymentCardServiceImplTest {
   @Test
   @DisplayName("deleteCard - success")
   void deleteCard_Success() {
-    when(cardRepository.findById(1L)).thenReturn(Optional.of(card));
-    doNothing().when(cardRepository).delete(card);
+    PaymentCard softDeletedCard = PaymentCard.builder().id(1L).user(user).active(false).build();
 
-    assertThatCode(() -> cardService.deleteCard(1L)).doesNotThrowAnyException();
-    verify(cardRepository).delete(card);
+    when(cardRepository.findById(1L)).thenReturn(Optional.of(card));
+    when(cardRepository.save(card)).thenReturn(softDeletedCard);
+    when(cardMapper.toResponse(softDeletedCard)).thenReturn(inactiveCardResponse);
+
+    PaymentCardResponse result = cardService.deleteCard(1L);
+
+    assertThat(result).isNotNull();
+    assertThat(result.getActive()).isFalse();
+    verify(cardRepository, never()).deleteById(any());
+    verify(cardRepository).save(card);
+  }
+
+  @Test
+  @DisplayName("deleteCard - throws ResourceNotFoundException when card not found")
+  void deleteCard_NotFound_ThrowsException() {
+    when(cardRepository.findById(99L)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> cardService.deleteCard(99L))
+            .isInstanceOf(ResourceNotFoundException.class);
+
+    verify(cardRepository, never()).save(any());
   }
 
   @Test

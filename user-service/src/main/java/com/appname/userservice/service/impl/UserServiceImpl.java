@@ -76,7 +76,7 @@ public class UserServiceImpl implements UserService {
 
   @Override
   @Transactional
-  @CacheEvict(value = CacheConstants.USERS_CACHE, key = "#id")
+  @CachePut(value = CacheConstants.USERS_CACHE, key = "#id")
   public void activateUser(Long id) {
     findUserOrThrow(id);
     userRepository.updateActiveStatus(id, true);
@@ -85,7 +85,7 @@ public class UserServiceImpl implements UserService {
 
   @Override
   @Transactional
-  @CacheEvict(value = CacheConstants.USERS_CACHE, key = "#id")
+  @CachePut(value = CacheConstants.USERS_CACHE, key = "#id")
   public void deactivateUser(Long id) {
     findUserOrThrow(id);
     userRepository.updateActiveStatus(id, false);
@@ -94,11 +94,13 @@ public class UserServiceImpl implements UserService {
 
   @Override
   @Transactional
-  @CacheEvict(value = CacheConstants.USERS_CACHE, key = "#id")
-  public void deleteUser(Long id) {
-    findUserOrThrow(id);
-    userRepository.deleteById(id);
+  @CacheEvict(value = CacheConstants.USERS_CACHE, key = "#id", beforeInvocation = false)
+  public UserResponse deleteUser(Long id) {
+    User user = findUserOrThrow(id);
+    user.setActive(false);
+    User updated = userRepository.save(user);
     log.info("Deleted user with id: {}", id);
+    return userMapper.toResponse(updated);
   }
 
   private User findUserOrThrow(Long id) {

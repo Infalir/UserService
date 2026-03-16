@@ -40,6 +40,7 @@ class UserServiceImplTest {
 
   private User user;
   private UserResponse userResponse;
+  private UserResponse inactiveUserResponse;
   private CreateUserRequest createRequest;
   private UpdateUserRequest updateRequest;
 
@@ -54,6 +55,10 @@ class UserServiceImplTest {
     userResponse.setSurname("Doe");
     userResponse.setEmail("john.doe@example.com");
     userResponse.setActive(true);
+
+    inactiveUserResponse = new UserResponse();
+    inactiveUserResponse.setId(1L);
+    inactiveUserResponse.setActive(false);
 
     createRequest = new CreateUserRequest();
     createRequest.setName("John");
@@ -178,11 +183,18 @@ class UserServiceImplTest {
   @Test
   @DisplayName("deleteUser - success")
   void deleteUser_Success() {
-    when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-    doNothing().when(userRepository).deleteById(1L);
+    User softDeletedUser = User.builder().id(1L).active(false).build();
 
-    assertThatCode(() -> userService.deleteUser(1L)).doesNotThrowAnyException();
-    verify(userRepository).deleteById(1L);
+    when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+    when(userRepository.save(user)).thenReturn(softDeletedUser);
+    when(userMapper.toResponse(softDeletedUser)).thenReturn(inactiveUserResponse);
+
+    UserResponse result = userService.deleteUser(1L);
+
+    assertThat(result).isNotNull();
+    assertThat(result.getActive()).isFalse();
+    verify(userRepository, never()).deleteById(any());
+    verify(userRepository).save(user);
   }
 
   @Test
@@ -194,6 +206,7 @@ class UserServiceImplTest {
             .isInstanceOf(ResourceNotFoundException.class);
 
     verify(userRepository, never()).deleteById(any());
+    verify(userRepository, never()).save(any());
   }
 
 }

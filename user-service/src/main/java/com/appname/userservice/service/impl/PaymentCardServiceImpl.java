@@ -41,14 +41,12 @@ public class PaymentCardServiceImpl implements PaymentCardService {
 
   @Override
   @Transactional
-  @Caching(evict = {
-          @CacheEvict(value = CacheConstants.USERS_CACHE, key = "#userId")
-  })
+  @Caching(evict = {@CacheEvict(value = CacheConstants.USERS_CACHE, key = "#userId", beforeInvocation = false)})
   public PaymentCardResponse createCard(Long userId, CreatePaymentCardRequest request) {
-    User user = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User", userId));
+    User user = userRepository.findByIdWithLock(userId).orElseThrow(() -> new ResourceNotFoundException("User", userId));
 
-    long cardCount = cardRepository.countCardsByUserId(userId);
-    if (cardCount >= MAX_CARDS_PER_USER) {
+    long activeCardCount = cardRepository.countActiveCardsByUserId(userId);
+    if (activeCardCount >= MAX_CARDS_PER_USER) {
       throw new CardLimitExceededException(userId);
     }
 
@@ -100,7 +98,7 @@ public class PaymentCardServiceImpl implements PaymentCardService {
 
   @Override
   @Transactional
-  @CacheEvict(value = CacheConstants.CARDS_CACHE, key = "#id")
+  @CachePut(value = CacheConstants.CARDS_CACHE, key = "#id")
   public void activateCard(Long id) {
     findCardOrThrow(id);
     cardRepository.updateActiveStatus(id, true);
@@ -109,7 +107,7 @@ public class PaymentCardServiceImpl implements PaymentCardService {
 
   @Override
   @Transactional
-  @CacheEvict(value = CacheConstants.CARDS_CACHE, key = "#id")
+  @CachePut(value = CacheConstants.CARDS_CACHE, key = "#id")
   public void deactivateCard(Long id) {
     findCardOrThrow(id);
     cardRepository.updateActiveStatus(id, false);
@@ -118,13 +116,14 @@ public class PaymentCardServiceImpl implements PaymentCardService {
 
   @Override
   @Transactional
-  @Caching(evict = {
-          @CacheEvict(value = CacheConstants.CARDS_CACHE, key = "#id")
-  })
-  public void deleteCard(Long id) {
+  @Caching(evict = {@CacheEvict(value = CacheConstants.CARDS_CACHE, key = "#id", beforeInvocation = false),
+          @CacheEvict(value = CacheConstants.USERS_CACHE, key = "#result.userId", beforeInvocation = false)})
+  public PaymentCardResponse deleteCard(Long id) {
     PaymentCard card = findCardOrThrow(id);
-    cardRepository.delete(card);
+    card.setActive(false);
+    PaymentCard updated = cardRepository.save(card);
     log.info("Deleted card with id: {}", id);
+    return cardMapper.toResponse(updated);
   }
 
   private PaymentCard findCardOrThrow(Long id) {

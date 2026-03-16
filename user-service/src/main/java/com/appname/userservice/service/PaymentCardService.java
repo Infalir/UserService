@@ -17,6 +17,6 @@ public interface PaymentCardService {
   PaymentCardResponse updateCard(Long id, UpdatePaymentCardRequest request);
   void activateCard(Long id);
   void deactivateCard(Long id);
-  void deleteCard(Long id);
+  PaymentCardResponse deleteCard(Long id);
 
 }
