@@ -51,7 +51,9 @@ public class PaymentCardServiceImpl implements PaymentCardService {
     }
 
     if (cardRepository.existsByNumber(request.getNumber())) {
-      throw new DuplicateResourceException("Card with number " + request.getNumber() + " already exists");
+      if (cardRepository.findByNumber(request.getNumber()).get().getActive()) {
+        throw new DuplicateResourceException("Card with number " + request.getNumber() + " already exists");
+      }
     }
 
     PaymentCard card = cardMapper.toEntity(request);
@@ -87,7 +89,7 @@ public class PaymentCardServiceImpl implements PaymentCardService {
 
   @Override
   @Transactional
-  @CachePut(value = CacheConstants.CARDS_CACHE, key = "#id")
+  @CacheEvict(value = CacheConstants.CARDS_CACHE, key = "#id")
   public PaymentCardResponse updateCard(Long id, UpdatePaymentCardRequest request) {
     PaymentCard card = findCardOrThrow(id);
     cardMapper.updateEntityFromRequest(request, card);
@@ -98,7 +100,7 @@ public class PaymentCardServiceImpl implements PaymentCardService {
 
   @Override
   @Transactional
-  @CachePut(value = CacheConstants.CARDS_CACHE, key = "#id")
+  @CacheEvict(value = CacheConstants.CARDS_CACHE, key = "#id")
   public void activateCard(Long id) {
     findCardOrThrow(id);
     cardRepository.updateActiveStatus(id, true);
@@ -107,7 +109,7 @@ public class PaymentCardServiceImpl implements PaymentCardService {
 
   @Override
   @Transactional
-  @CachePut(value = CacheConstants.CARDS_CACHE, key = "#id")
+  @CacheEvict(value = CacheConstants.CARDS_CACHE, key = "#id")
   public void deactivateCard(Long id) {
     findCardOrThrow(id);
     cardRepository.updateActiveStatus(id, false);

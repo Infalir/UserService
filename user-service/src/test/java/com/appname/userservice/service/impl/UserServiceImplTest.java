@@ -4,6 +4,7 @@ import com.appname.userservice.dto.request.CreateUserRequest;
 import com.appname.userservice.dto.request.UpdateUserRequest;
 import com.appname.userservice.dto.request.UserFilterRequest;
 import com.appname.userservice.dto.response.UserResponse;
+import com.appname.userservice.entity.PaymentCard;
 import com.appname.userservice.entity.User;
 import com.appname.userservice.exception.DuplicateResourceException;
 import com.appname.userservice.exception.ResourceNotFoundException;
@@ -20,6 +21,7 @@ import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -46,6 +48,7 @@ class UserServiceImplTest {
 
   @BeforeEach
   void setUp() {
+
     user = User.builder().id(1L).name("John").surname("Doe").email("john.doe@example.com")
             .birthDate(LocalDate.of(1990, 1, 1)).active(true).build();
 
@@ -183,7 +186,16 @@ class UserServiceImplTest {
   @Test
   @DisplayName("deleteUser - success")
   void deleteUser_Success() {
-    User softDeletedUser = User.builder().id(1L).active(false).build();
+    PaymentCard card1 = PaymentCard.builder().id(100L).active(true).build();
+    PaymentCard card2 = PaymentCard.builder().id(101L).active(true).build();
+
+    List<PaymentCard> cards = new ArrayList<>();
+    cards.add(card1);
+    cards.add(card2);
+
+    user.setPaymentCards(cards);
+
+    User softDeletedUser = User.builder().id(1L).active(false).paymentCards(cards).build();
 
     when(userRepository.findById(1L)).thenReturn(Optional.of(user));
     when(userRepository.save(user)).thenReturn(softDeletedUser);
@@ -193,6 +205,7 @@ class UserServiceImplTest {
 
     assertThat(result).isNotNull();
     assertThat(result.getActive()).isFalse();
+    assertThat(user.getPaymentCards()).allMatch(card -> !card.getActive());
     verify(userRepository, never()).deleteById(any());
     verify(userRepository).save(user);
   }
