@@ -24,7 +24,7 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
   Page<User> findActiveByNameContaining(@Param("name") String name, Pageable pageable);
 
   @Modifying
-  @Query(value = "UPDATE users SET active = :active WHERE id = :id", nativeQuery = true)
+  @Query(value = "UPDATE users SET active = :active, updated_at = CURRENT_TIMESTAMP WHERE id = :id", nativeQuery = true)
   int updateActiveStatus(@Param("id") Long id, @Param("active") boolean active);
 
 }

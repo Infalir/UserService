@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -97,7 +98,8 @@ public class UserServiceImpl implements UserService {
 
   @Override
   @Transactional
-  @CacheEvict(value = CacheConstants.USERS_CACHE, key = "#id", beforeInvocation = false)
+  @Caching(evict = {@CacheEvict(value = CacheConstants.USERS_CACHE, key = "#id", beforeInvocation = false),
+          @CacheEvict(value = CacheConstants.CARDS_CACHE, allEntries = true, beforeInvocation = false)})
   public UserResponse deleteUser(Long id) {
     User user = findUserOrThrow(id);
     user.setActive(false);
