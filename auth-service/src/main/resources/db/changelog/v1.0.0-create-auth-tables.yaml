@@ -1,0 +1,167 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 1-create-roles-table
+      author: dev
+      changes:
+        - createTable:
+            tableName: roles
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+                    unique: true
+
+  - changeSet:
+      id: 2-create-user-credentials-table
+      author: dev
+      changes:
+        - createTable:
+            tableName: user_credentials
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: login
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: password_hash
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: role_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_user_credentials_role
+                    references: roles(id)
+              - column:
+                  name: active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 3-create-refresh-tokens-table
+      author: dev
+      changes:
+        - createTable:
+            tableName: refresh_tokens
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_credentials_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_refresh_tokens_credentials
+                    references: user_credentials(id)
+              - column:
+                  name: token
+                  type: VARCHAR(512)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: expires_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: revoked
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 4-seed-roles
+      author: dev
+      changes:
+        - insert:
+            tableName: roles
+            columns:
+              - column:
+                  name: name
+                  value: ROLE_ADMIN
+        - insert:
+            tableName: roles
+            columns:
+              - column:
+                  name: name
+                  value: ROLE_USER
+
+  - changeSet:
+      id: 5-create-indexes
+      author: dev
+      changes:
+        - createIndex:
+            indexName: idx_user_credentials_login
+            tableName: user_credentials
+            columns:
+              - column:
+                  name: login
+        - createIndex:
+            indexName: idx_user_credentials_user_id
+            tableName: user_credentials
+            columns:
+              - column:
+                  name: user_id
+        - createIndex:
+            indexName: idx_refresh_tokens_token
+            tableName: refresh_tokens
+            columns:
+              - column:
+                  name: token
+        - createIndex:
+            indexName: idx_refresh_tokens_credentials_id
+            tableName: refresh_tokens
+            columns:
+              - column:
+                  name: user_credentials_id
