@@ -13,6 +13,7 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -41,6 +42,12 @@ public class JwtService {
     public String generateRefreshToken(String login) {
         return Jwts.builder()
                 .subject(login)
+                // jti (JWT ID) is a UUID nonce — guarantees uniqueness even when two
+                // refresh tokens are generated within the same second for the same user.
+                // Without this, tokens generated in the same second produce identical
+                // strings (same sub + iat + exp) causing a unique constraint violation
+                // in the refresh_tokens table.
+                .id(UUID.randomUUID().toString())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + jwtProperties.getRefreshTokenExpirationMs()))
                 .signWith(getSigningKey())
