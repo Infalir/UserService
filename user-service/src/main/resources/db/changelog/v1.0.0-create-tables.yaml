@@ -1,0 +1,152 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 1-create-users-table
+      author: dev
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: surname
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: birth_date
+                  type: DATE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: email
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 2-create-payment-cards-table
+      author: dev
+      changes:
+        - createTable:
+            tableName: payment_cards
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_payment_cards_user
+                    references: users(id)
+              - column:
+                  name: number
+                  type: VARCHAR(19)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: holder
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expiration_date
+                  type: DATE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 3-create-indexes
+      author: dev
+      changes:
+        - createIndex:
+            indexName: idx_users_email
+            tableName: users
+            columns:
+              - column:
+                  name: email
+        - createIndex:
+            indexName: idx_users_name_surname
+            tableName: users
+            columns:
+              - column:
+                  name: name
+              - column:
+                  name: surname
+        - createIndex:
+            indexName: idx_users_active
+            tableName: users
+            columns:
+              - column:
+                  name: active
+        - createIndex:
+            indexName: idx_payment_cards_user_id
+            tableName: payment_cards
+            columns:
+              - column:
+                  name: user_id
+        - createIndex:
+            indexName: idx_payment_cards_number
+            tableName: payment_cards
+            columns:
+              - column:
+                  name: number
+        - createIndex:
+            indexName: idx_payment_cards_active
+            tableName: payment_cards
+            columns:
+              - column:
+                  name: active
