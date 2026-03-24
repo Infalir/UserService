@@ -37,7 +37,6 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceImplTest {
-
   @Mock private UserCredentialsRepository credentialsRepository;
   @Mock private RoleRepository roleRepository;
   @Mock private RefreshTokenRepository refreshTokenRepository;
@@ -69,8 +68,6 @@ class AuthServiceImplTest {
             .expiresAt(LocalDateTime.now().plusDays(7))
             .build();
   }
-
-  // ─── saveCredentials ──────────────────────────────────────────────────────
 
   @Test
   @DisplayName("saveCredentials - success with default ROLE_USER")
@@ -143,8 +140,6 @@ class AuthServiceImplTest {
     verify(credentialsRepository, never()).save(any());
   }
 
-  // ─── login ────────────────────────────────────────────────────────────────
-
   @Test
   @DisplayName("login - success returns token pair")
   void login_Success() {
@@ -213,8 +208,6 @@ class AuthServiceImplTest {
             .hasMessageContaining("100");
   }
 
-  // ─── refresh ──────────────────────────────────────────────────────────────
-
   @Test
   @DisplayName("refresh - success rotates refresh token")
   void refresh_Success() {
@@ -280,8 +273,6 @@ class AuthServiceImplTest {
             .hasMessageContaining("expired");
   }
 
-  // ─── validate ─────────────────────────────────────────────────────────────
-
   @Test
   @DisplayName("validate - returns valid response with claims for valid token")
   void validate_ValidToken_ReturnsDetails() {
@@ -314,4 +305,5 @@ class AuthServiceImplTest {
     assertThat(result.isValid()).isFalse();
     assertThat(result.getUserId()).isNull();
   }
+
 }

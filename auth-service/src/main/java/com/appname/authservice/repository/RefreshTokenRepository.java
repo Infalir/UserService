@@ -11,11 +11,10 @@ import java.util.Optional;
 
 @Repository
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
-
     Optional<RefreshToken> findByToken(String token);
 
-    // Revoke all active refresh tokens for a user on logout or re-login
     @Modifying
     @Query("UPDATE RefreshToken rt SET rt.revoked = true WHERE rt.userCredentials.id = :credentialsId AND rt.revoked = false")
     int revokeAllByUserCredentialsId(@Param("credentialsId") Long credentialsId);
+
 }

@@ -30,9 +30,6 @@ import java.util.Map;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
-    // ─── Business exceptions ─────────────────────────────────────────────────
-
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleInvalidCredentials(
             InvalidCredentialsException ex, HttpServletRequest request) {
@@ -61,8 +58,6 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.FORBIDDEN, "Account Disabled", ex.getMessage(), request);
     }
 
-    // ─── JWT-specific exceptions (Step 7) ────────────────────────────────────
-
     @ExceptionHandler(ExpiredJwtException.class)
     public ResponseEntity<ErrorResponse> handleExpiredJwt(
             ExpiredJwtException ex, HttpServletRequest request) {
@@ -90,8 +85,6 @@ public class GlobalExceptionHandler {
         log.warn("Unsupported JWT token: {}", ex.getMessage());
         return build(HttpStatus.UNAUTHORIZED, "Unsupported Token", "JWT token is unsupported", request);
     }
-
-    // ─── Spring Security exceptions (Step 7) ─────────────────────────────────
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(
@@ -127,8 +120,6 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.UNAUTHORIZED, "Authentication Failed", ex.getMessage(), request);
     }
 
-    // ─── Validation ──────────────────────────────────────────────────────────
-
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(
             MethodArgumentNotValidException ex, HttpServletRequest request) {
@@ -138,39 +129,24 @@ public class GlobalExceptionHandler {
             errors.put(field, error.getDefaultMessage());
         });
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
-                ErrorResponse.builder()
-                        .status(HttpStatus.BAD_REQUEST.value())
-                        .error("Validation Failed")
-                        .message("Request validation failed")
-                        .path(request.getRequestURI())
-                        .timestamp(LocalDateTime.now())
-                        .validationErrors(errors)
-                        .build()
+                ErrorResponse.builder().status(HttpStatus.BAD_REQUEST.value()).error("Validation Failed")
+                        .message("Request validation failed").path(request.getRequestURI()).timestamp(LocalDateTime.now())
+                        .validationErrors(errors).build()
         );
     }
 
-    // ─── Fallback ─────────────────────────────────────────────────────────────
-
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGeneral(
-            Exception ex, HttpServletRequest request) {
+    public ResponseEntity<ErrorResponse> handleGeneral(Exception ex, HttpServletRequest request) {
         log.error("Unexpected error: ", ex);
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error",
                 "An unexpected error occurred", request);
     }
 
-    // ─── Helper ───────────────────────────────────────────────────────────────
-
-    private ResponseEntity<ErrorResponse> build(
-            HttpStatus status, String error, String message, HttpServletRequest request) {
+    private ResponseEntity<ErrorResponse> build(HttpStatus status, String error, String message, HttpServletRequest request) {
         return ResponseEntity.status(status).body(
-                ErrorResponse.builder()
-                        .status(status.value())
-                        .error(error)
-                        .message(message)
-                        .path(request.getRequestURI())
-                        .timestamp(LocalDateTime.now())
-                        .build()
+                ErrorResponse.builder().status(status.value()).error(error).message(message)
+                        .path(request.getRequestURI()).timestamp(LocalDateTime.now()).build()
         );
     }
+
 }

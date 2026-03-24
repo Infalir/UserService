@@ -31,14 +31,12 @@ import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
-
     private final UserCredentialsRepository credentialsRepository;
     private final RoleRepository roleRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
 
-    // Step 4: Save hashed password with BCrypt (unique salt per password is built into BCrypt)
     @Override
     @Transactional
     public void saveCredentials(SaveCredentialsRequest request) {
@@ -58,7 +56,6 @@ public class AuthServiceImpl implements AuthService {
         UserCredentials credentials = UserCredentials.builder()
                 .userId(request.getUserId())
                 .login(request.getLogin())
-                // BCrypt automatically generates a unique salt per call
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .role(role)
                 .active(true)
@@ -69,7 +66,6 @@ public class AuthServiceImpl implements AuthService {
                 request.getUserId(), request.getLogin(), roleName);
     }
 
-    // Step 3: Login with login/password — returns both access and refresh JWT tokens
     @Override
     @Transactional
     public TokenResponse login(LoginRequest request) {
@@ -80,12 +76,10 @@ public class AuthServiceImpl implements AuthService {
             throw new AccountDisabledException(credentials.getUserId());
         }
 
-        // BCrypt compare — safe against timing attacks
         if (!passwordEncoder.matches(request.getPassword(), credentials.getPasswordHash())) {
             throw new InvalidCredentialsException();
         }
 
-        // Revoke all existing refresh tokens before issuing new ones
         refreshTokenRepository.revokeAllByUserCredentialsId(credentials.getId());
 
         String accessToken  = jwtService.generateAccessToken(
@@ -101,7 +95,6 @@ public class AuthServiceImpl implements AuthService {
         return buildTokenResponse(accessToken, refreshToken);
     }
 
-    // Step 2: Refresh token — validates existing refresh token, issues new pair
     @Override
     @Transactional
     public TokenResponse refresh(RefreshTokenRequest request) {
@@ -123,7 +116,6 @@ public class AuthServiceImpl implements AuthService {
             throw new AccountDisabledException(credentials.getUserId());
         }
 
-        // Revoke the used refresh token (rotation — one-time use)
         stored.setRevoked(true);
         refreshTokenRepository.save(stored);
 
@@ -140,7 +132,6 @@ public class AuthServiceImpl implements AuthService {
         return buildTokenResponse(newAccessToken, newRefreshToken);
     }
 
-    // Step 2: Validate token — returns userId and role extracted from JWT claims
     @Override
     public ValidateTokenResponse validate(ValidateTokenRequest request) {
         if (!jwtService.validateToken(request.getToken())) {
@@ -153,8 +144,6 @@ public class AuthServiceImpl implements AuthService {
                 .role(jwtService.extractRole(request.getToken()))
                 .build();
     }
-
-    // ─── Helpers ─────────────────────────────────────────────────────────────
 
     private void saveRefreshToken(UserCredentials credentials, String token) {
         RefreshToken refreshToken = RefreshToken.builder()
@@ -186,4 +175,5 @@ public class AuthServiceImpl implements AuthService {
             return RoleName.ROLE_USER;
         }
     }
+
 }

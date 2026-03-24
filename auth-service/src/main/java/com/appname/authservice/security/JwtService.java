@@ -19,13 +19,11 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class JwtService {
-
     private static final String CLAIM_USER_ID = "userId";
     private static final String CLAIM_ROLE    = "role";
 
     private final JwtProperties jwtProperties;
 
-    // Step 6: JWT contains userId and role
     public String generateAccessToken(Long userId, String login, RoleName role) {
         return Jwts.builder()
                 .subject(login)
@@ -42,11 +40,6 @@ public class JwtService {
     public String generateRefreshToken(String login) {
         return Jwts.builder()
                 .subject(login)
-                // jti (JWT ID) is a UUID nonce — guarantees uniqueness even when two
-                // refresh tokens are generated within the same second for the same user.
-                // Without this, tokens generated in the same second produce identical
-                // strings (same sub + iat + exp) causing a unique constraint violation
-                // in the refresh_tokens table.
                 .id(UUID.randomUUID().toString())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + jwtProperties.getRefreshTokenExpirationMs()))
@@ -94,4 +87,5 @@ public class JwtService {
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8));
     }
+
 }

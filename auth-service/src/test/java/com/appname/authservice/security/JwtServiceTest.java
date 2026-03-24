@@ -8,8 +8,6 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.*;
 
 class JwtServiceTest {
-
-  // 64-character secret — well above the 32-byte minimum for HMAC-SHA256
   private static final String TEST_SECRET =
           "rO9jApAZfCAq3M4TXbJaRwGUCcIvrR9ac3G8nYv0egq4dh623ojwa0pElGqOf0txbTLz6tW7lpL7JNEwLYpkFv";
   private static final long ACCESS_EXPIRY_MS  = 60_000L;       // 1 minute — plenty of headroom
@@ -19,15 +17,12 @@ class JwtServiceTest {
 
   @BeforeEach
   void setUp() {
-    // Instantiate directly — no Mockito needed, JwtService is pure logic
     JwtProperties props = new JwtProperties();
     props.setSecret(TEST_SECRET);
     props.setAccessTokenExpirationMs(ACCESS_EXPIRY_MS);
     props.setRefreshTokenExpirationMs(REFRESH_EXPIRY_MS);
     jwtService = new JwtService(props);
   }
-
-  // ─── generateAccessToken ──────────────────────────────────────────────────
 
   @Test
   @DisplayName("generateAccessToken - produces a non-blank JWT string with three parts")
@@ -75,10 +70,6 @@ class JwtServiceTest {
   @Test
   @DisplayName("generateAccessToken - two tokens for the same user are each individually valid")
   void generateAccessToken_TwoTokensAreEachValid() {
-    // JWT iat claim has second-level precision — two tokens generated within
-    // the same second will have identical payloads and therefore identical
-    // signatures. Testing inequality is not reliable. Instead we assert that
-    // each token is independently valid and carries the correct claims.
     String token1 = jwtService.generateAccessToken(42L, "john", RoleName.ROLE_USER);
     String token2 = jwtService.generateAccessToken(42L, "john", RoleName.ROLE_USER);
 
@@ -89,8 +80,6 @@ class JwtServiceTest {
     assertThat(jwtService.extractLogin(token1)).isEqualTo("john");
     assertThat(jwtService.extractLogin(token2)).isEqualTo("john");
   }
-
-  // ─── generateRefreshToken ─────────────────────────────────────────────────
 
   @Test
   @DisplayName("generateRefreshToken - produces a non-blank JWT string with three parts")
@@ -118,12 +107,9 @@ class JwtServiceTest {
   @DisplayName("generateRefreshToken - does not contain userId claim (throws on extraction)")
   void generateRefreshToken_NoUserIdClaim() {
     String token = jwtService.generateRefreshToken("john");
-    // Refresh tokens intentionally have no userId claim
     assertThatThrownBy(() -> jwtService.extractUserId(token))
             .isInstanceOf(Exception.class);
   }
-
-  // ─── validateToken ────────────────────────────────────────────────────────
 
   @Test
   @DisplayName("validateToken - returns false for completely invalid string")
@@ -170,16 +156,15 @@ class JwtServiceTest {
     String expiredToken = shortLivedService.generateAccessToken(
             1L, "john", RoleName.ROLE_USER);
 
-    Thread.sleep(50); // ensure expiry
+    Thread.sleep(50);
 
     assertThat(jwtService.validateToken(expiredToken)).isFalse();
   }
-
-  // ─── getRefreshTokenExpirationMs ──────────────────────────────────────────
 
   @Test
   @DisplayName("getRefreshTokenExpirationMs - returns the configured value")
   void getRefreshTokenExpirationMs_ReturnsConfiguredValue() {
     assertThat(jwtService.getRefreshTokenExpirationMs()).isEqualTo(REFRESH_EXPIRY_MS);
   }
+
 }

@@ -12,4 +12,5 @@ public interface AuthService {
     TokenResponse login(LoginRequest request);
     TokenResponse refresh(RefreshTokenRequest request);
     ValidateTokenResponse validate(ValidateTokenRequest request);
+
 }

@@ -10,4 +10,5 @@ public class ValidateTokenResponse {
   private Long userId;
   private String login;
   private String role;
+
 }

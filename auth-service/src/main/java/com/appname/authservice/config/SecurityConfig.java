@@ -16,7 +16,6 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
-
     private final SecurityExceptionHandler securityExceptionHandler;
 
     @Bean
@@ -26,12 +25,10 @@ public class SecurityConfig {
             .sessionManagement(session ->
                     session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                    // All auth endpoints are public — no token needed to login or register
                     .requestMatchers("/api/v1/auth/**").permitAll()
                     .requestMatchers("/actuator/health").permitAll()
                     .anyRequest().authenticated()
             )
-            // Step 7: attach custom handlers for 401 and 403
             .exceptionHandling(ex -> ex
                     .authenticationEntryPoint(securityExceptionHandler)
                     .accessDeniedHandler(securityExceptionHandler)
@@ -39,7 +36,6 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // Step 4: BCryptPasswordEncoder — generates a unique salt per password automatically
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12);

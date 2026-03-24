@@ -17,4 +17,5 @@ public class ErrorResponse {
   private String path;
   private LocalDateTime timestamp;
   private Map<String, String> validationErrors;
+
 }

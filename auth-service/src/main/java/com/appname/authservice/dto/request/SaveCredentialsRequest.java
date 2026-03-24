@@ -7,7 +7,6 @@ import lombok.Data;
 
 @Data
 public class SaveCredentialsRequest {
-
   @NotNull(message = "User ID is required")
   private Long userId;
 
@@ -19,6 +18,6 @@ public class SaveCredentialsRequest {
   @Size(min = 8, message = "Password must be at least 8 characters")
   private String password;
 
-  // If not provided, defaults to ROLE_USER
   private String role;
+
 }

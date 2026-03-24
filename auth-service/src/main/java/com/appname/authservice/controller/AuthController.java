@@ -20,35 +20,27 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 public class AuthController {
-
     private final AuthService authService;
 
-    // Step 4: Called by user-service after creating a user to store credentials
     @PostMapping("/credentials")
-    public ResponseEntity<Void> saveCredentials(
-            @Valid @RequestBody SaveCredentialsRequest request) {
+    public ResponseEntity<Void> saveCredentials(@Valid @RequestBody SaveCredentialsRequest request) {
         authService.saveCredentials(request);
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
-    // Step 3: Login — returns access + refresh JWT tokens
     @PostMapping("/login")
-    public ResponseEntity<TokenResponse> login(
-            @Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
 
-    // Step 2: Refresh token — issues a new token pair using a valid refresh token
     @PostMapping("/refresh")
-    public ResponseEntity<TokenResponse> refresh(
-            @Valid @RequestBody RefreshTokenRequest request) {
+    public ResponseEntity<TokenResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
         return ResponseEntity.ok(authService.refresh(request));
     }
 
-    // Step 2: Validate token — used by user-service filter to verify incoming JWTs
     @PostMapping("/validate")
-    public ResponseEntity<ValidateTokenResponse> validate(
-            @Valid @RequestBody ValidateTokenRequest request) {
+    public ResponseEntity<ValidateTokenResponse> validate(@Valid @RequestBody ValidateTokenRequest request) {
         return ResponseEntity.ok(authService.validate(request));
     }
+
 }

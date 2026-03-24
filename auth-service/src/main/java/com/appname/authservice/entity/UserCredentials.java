@@ -23,19 +23,16 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class UserCredentials {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // References the user id in user-service — no FK across services
     @Column(name = "user_id", nullable = false, unique = true)
     private Long userId;
 
     @Column(name = "login", nullable = false, unique = true, length = 255)
     private String login;
 
-    // BCrypt hash — never store plain text
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 

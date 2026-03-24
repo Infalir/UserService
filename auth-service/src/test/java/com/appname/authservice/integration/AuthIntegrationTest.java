@@ -15,25 +15,17 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.*;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.jdbc.Sql;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-// @Sql runs cleanup.sql before each test directly against the DB,
-// bypassing Hibernate's session entirely — the only reliable approach
-// when TestRestTemplate runs requests in a separate thread from the test.
-@Sql(scripts = "/cleanup.sql",
-        executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
+@Sql(scripts = "/cleanup.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class AuthIntegrationTest extends BaseIntegrationTest {
-
   @Autowired private TestRestTemplate restTemplate;
   @Autowired private UserCredentialsRepository credentialsRepository;
   @Autowired private RefreshTokenRepository refreshTokenRepository;
 
   private static final String BASE_URL = "/api/v1/auth";
-
-  // ─── Helpers ──────────────────────────────────────────────────────────────
 
   private SaveCredentialsRequest buildSaveRequest(Long userId, String login, String password) {
     SaveCredentialsRequest req = new SaveCredentialsRequest();
@@ -62,8 +54,6 @@ class AuthIntegrationTest extends BaseIntegrationTest {
     restTemplate.postForEntity(BASE_URL + "/credentials",
             buildSaveRequest(userId, login, password), Void.class);
   }
-
-  // ─── POST /auth/credentials ───────────────────────────────────────────────
 
   @Test
   @DisplayName("POST /credentials - saves user credentials and returns 201")
@@ -177,8 +167,6 @@ class AuthIntegrationTest extends BaseIntegrationTest {
     assertThat(response.getBody().getValidationErrors()).containsKey("userId");
   }
 
-  // ─── POST /auth/login ─────────────────────────────────────────────────────
-
   @Test
   @DisplayName("POST /login - returns 200 with access and refresh tokens")
   void login_Returns200WithTokens() {
@@ -285,8 +273,6 @@ class AuthIntegrationTest extends BaseIntegrationTest {
     assertThat(response.getBody().getValidationErrors()).containsKey("login");
   }
 
-  // ─── POST /auth/refresh ───────────────────────────────────────────────────
-
   @Test
   @DisplayName("POST /refresh - returns new token pair and rotates refresh token")
   void refresh_ReturnsNewTokenPair() {
@@ -307,7 +293,7 @@ class AuthIntegrationTest extends BaseIntegrationTest {
   }
 
   @Test
-  @DisplayName("POST /refresh - old token cannot be reused after rotation (replay attack prevention)")
+  @DisplayName("POST /refresh - old token cannot be reused after rotation")
   void refresh_OldTokenCannotBeReused() {
     register(1L, "john", "password123");
     TokenResponse tokens = loginAndGetTokens("john", "password123");
@@ -370,8 +356,6 @@ class AuthIntegrationTest extends BaseIntegrationTest {
     assertThat(response.getBody().getValidationErrors()).containsKey("refreshToken");
   }
 
-  // ─── POST /auth/validate ──────────────────────────────────────────────────
-
   @Test
   @DisplayName("POST /validate - returns valid=true with correct claims for valid access token")
   void validate_ValidAccessToken_ReturnsDetails() {
@@ -418,23 +402,18 @@ class AuthIntegrationTest extends BaseIntegrationTest {
     assertThat(response.getBody().getValidationErrors()).containsKey("token");
   }
 
-  // ─── Full end-to-end flow ─────────────────────────────────────────────────
-
   @Test
   @DisplayName("Full flow: register -> login -> validate -> refresh -> validate with new token")
   void fullAuthFlow_EndToEnd() {
-    // 1. Register
     ResponseEntity<Void> registerResponse = restTemplate.postForEntity(
             BASE_URL + "/credentials",
             buildSaveRequest(10L, "e2euser", "password123"),
             Void.class);
     assertThat(registerResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
-    // 2. Login
     TokenResponse tokens = loginAndGetTokens("e2euser", "password123");
     assertThat(tokens.getAccessToken()).isNotBlank();
 
-    // 3. Validate access token
     ValidateTokenRequest validateReq = new ValidateTokenRequest();
     validateReq.setToken(tokens.getAccessToken());
     ValidateTokenResponse validation = restTemplate.postForEntity(
@@ -442,14 +421,12 @@ class AuthIntegrationTest extends BaseIntegrationTest {
     assertThat(validation.isValid()).isTrue();
     assertThat(validation.getUserId()).isEqualTo(10L);
 
-    // 4. Refresh tokens
     RefreshTokenRequest refreshReq = new RefreshTokenRequest();
     refreshReq.setRefreshToken(tokens.getRefreshToken());
     TokenResponse newTokens = restTemplate.postForEntity(
             BASE_URL + "/refresh", refreshReq, TokenResponse.class).getBody();
     assertThat(newTokens.getAccessToken()).isNotBlank();
 
-    // 5. Validate new access token — same userId still embedded
     ValidateTokenRequest validateNewReq = new ValidateTokenRequest();
     validateNewReq.setToken(newTokens.getAccessToken());
     ValidateTokenResponse newValidation = restTemplate.postForEntity(

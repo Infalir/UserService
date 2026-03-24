@@ -1,7 +1,8 @@
-package com.appname.authservice.exception.handler;
+package com.appname.userservice.security;
 
-import com.appname.authservice.dto.response.ErrorResponse;
+import com.appname.userservice.dto.response.ErrorResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -20,34 +21,32 @@ import java.time.LocalDateTime;
 @Slf4j
 @Component
 public class SecurityExceptionHandler implements AuthenticationEntryPoint, AccessDeniedHandler {
-
     private final ObjectMapper objectMapper;
 
     public SecurityExceptionHandler() {
         this.objectMapper = new ObjectMapper();
         this.objectMapper.registerModule(new JavaTimeModule());
-        this.objectMapper.disable(
-                com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        this.objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
 
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
                          AuthenticationException authException) throws IOException {
-        log.warn("Unauthorized request to {}: {}", request.getRequestURI(), authException.getMessage());
+        log.warn("Unauthorized: {}", request.getRequestURI());
         writeError(response, HttpStatus.UNAUTHORIZED, "Unauthorized",
-                "Full authentication is required to access this resource", request);
+                "Full authentication is required", request);
     }
 
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response,
-                       AccessDeniedException accessDeniedException) throws IOException {
-        log.warn("Access denied to {}: {}", request.getRequestURI(), accessDeniedException.getMessage());
+                       AccessDeniedException ex) throws IOException {
+        log.warn("Access denied: {}", request.getRequestURI());
         writeError(response, HttpStatus.FORBIDDEN, "Access Denied",
                 "You do not have permission to access this resource", request);
     }
 
-    private void writeError(HttpServletResponse response, HttpStatus status,
-                             String error, String message, HttpServletRequest request) throws IOException {
+    private void writeError(HttpServletResponse response, HttpStatus status, String error, String message,
+                            HttpServletRequest request) throws IOException {
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         ErrorResponse body = ErrorResponse.builder().status(status.value()).error(error)

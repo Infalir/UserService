@@ -11,7 +11,6 @@ import java.util.Optional;
 
 @Repository
 public interface UserCredentialsRepository extends JpaRepository<UserCredentials, Long> {
-
     Optional<UserCredentials> findByLogin(String login);
 
     boolean existsByLogin(String login);
@@ -20,7 +19,6 @@ public interface UserCredentialsRepository extends JpaRepository<UserCredentials
 
     Optional<UserCredentials> findByUserId(Long userId);
 
-    // Native SQL — updated_at set explicitly to bypass JPA Auditing gap with native queries
     @Modifying
     @Query(value = "UPDATE user_credentials SET active = :active, updated_at = CURRENT_TIMESTAMP WHERE id = :id",
             nativeQuery = true)

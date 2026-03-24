@@ -10,7 +10,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers
 public abstract class BaseIntegrationTest {
-
   @Container
   static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine")
           .withDatabaseName("authservice_test")
@@ -24,10 +23,10 @@ public abstract class BaseIntegrationTest {
     registry.add("spring.datasource.password", POSTGRES::getPassword);
     registry.add("spring.liquibase.enabled", () -> "true");
     registry.add("spring.jpa.hibernate.ddl-auto", () -> "validate");
-    // 64-character secret — well above the 32-byte minimum JJWT requires
     registry.add("jwt.secret", () ->
-            "test-secret-key-that-is-at-least-64-characters-long-for-hmac-sha256!!");
+            "rO9jApAZfCAq3M4TXbJaRwGUCcIvrR9ac3G8nYv0egq4dh623ojwa0pElGqOf0txbTLz6tW7lpL7JNEwLYpkFv");
     registry.add("jwt.access-token-expiration-ms", () -> "900000");
     registry.add("jwt.refresh-token-expiration-ms", () -> "604800000");
   }
+
 }
