@@ -5,6 +5,7 @@ import com.appname.userservice.dto.request.CreateUserRequest;
 import com.appname.userservice.dto.request.UpdateUserRequest;
 import com.appname.userservice.dto.request.UserFilterRequest;
 import com.appname.userservice.dto.response.UserResponse;
+import com.appname.userservice.entity.PaymentCard;
 import com.appname.userservice.entity.User;
 import com.appname.userservice.exception.DuplicateResourceException;
 import com.appname.userservice.exception.ResourceNotFoundException;
@@ -17,11 +18,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Slf4j
 @Service
@@ -60,7 +64,7 @@ public class UserServiceImpl implements UserService {
 
   @Override
   @Transactional
-  @CachePut(value = CacheConstants.USERS_CACHE, key = "#id")
+  @CacheEvict(value = CacheConstants.USERS_CACHE, key = "#id")
   public UserResponse updateUser(Long id, UpdateUserRequest request) {
     User user = findUserOrThrow(id);
     if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
@@ -94,11 +98,19 @@ public class UserServiceImpl implements UserService {
 
   @Override
   @Transactional
-  @CacheEvict(value = CacheConstants.USERS_CACHE, key = "#id")
-  public void deleteUser(Long id) {
-    findUserOrThrow(id);
-    userRepository.deleteById(id);
+  @Caching(evict = {@CacheEvict(value = CacheConstants.USERS_CACHE, key = "#id", beforeInvocation = false),
+          @CacheEvict(value = CacheConstants.CARDS_CACHE, allEntries = true, beforeInvocation = false)})
+  public UserResponse deleteUser(Long id) {
+    User user = findUserOrThrow(id);
+    user.setActive(false);
+    List<PaymentCard> cards = user.getPaymentCards();
+    for (PaymentCard card: cards){
+      card.setActive(false);
+    }
+    user.setPaymentCards(cards);
+    User updated = userRepository.save(user);
     log.info("Deleted user with id: {}", id);
+    return userMapper.toResponse(updated);
   }
 
   private User findUserOrThrow(Long id) {
