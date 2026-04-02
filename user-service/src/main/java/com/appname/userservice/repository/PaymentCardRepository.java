@@ -18,6 +18,7 @@ public interface PaymentCardRepository extends JpaRepository<PaymentCard, Long>,
   List<PaymentCard> findByUserId(Long userId);
   Page<PaymentCard> findByUserId(Long userId, Pageable pageable);
   boolean existsByNumber(String number);
+  Optional<PaymentCard> findByNumber(String number);
 
   @Query("SELECT COUNT(c) FROM PaymentCard c WHERE c.user.id = :userId AND c.active = true")
   long countActiveCardsByUserId(@Param("userId") Long userId);
@@ -26,7 +27,7 @@ public interface PaymentCardRepository extends JpaRepository<PaymentCard, Long>,
   long countCardsByUserId(@Param("userId") Long userId);
 
   @Modifying
-  @Query(value = "UPDATE payment_cards SET active = :active WHERE id = :id", nativeQuery = true)
+  @Query(value = "UPDATE payment_cards SET active = :active, updated_at = CURRENT_TIMESTAMP WHERE id = :id", nativeQuery = true)
   int updateActiveStatus(@Param("id") Long id, @Param("active") boolean active);
 
   Optional<PaymentCard> findByIdAndUserId(Long id, Long userId);
