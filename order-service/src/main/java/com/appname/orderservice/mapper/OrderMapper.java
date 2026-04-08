@@ -9,11 +9,4 @@ import org.mapstruct.*;
 public interface OrderMapper {
   OrderResponse toResponse(Order order);
 
-  @AfterMapping
-  default void setUser(@MappingTarget OrderResponse response, UserResponse user) {
-    if (user != null) {
-      response.setUser(user);
-    }
-  }
-
 }

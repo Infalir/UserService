@@ -28,7 +28,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -60,14 +63,14 @@ public class OrderServiceImpl implements OrderService {
         Order saved = orderRepository.save(order);
         log.info("Created order with id: {} for userId: {}", saved.getId(), request.getUserId());
 
-        return enrich(saved);
+        return enrichOne(saved);
     }
 
     @Override
     @Transactional(readOnly = true)
     public OrderResponse getOrderById(Long id) {
         Order order = findActiveOrderOrThrow(id);
-        return enrich(order);
+        return enrichOne(order);
     }
 
     @Override
@@ -79,13 +82,29 @@ public class OrderServiceImpl implements OrderService {
                 .and(OrderSpecification.createdAfter(filter.getCreatedFrom()))
                 .and(OrderSpecification.createdBefore(filter.getCreatedTo()));
 
-        return orderRepository.findAll(spec, pageable).map(this::enrich);
+        Page<Order> page = orderRepository.findAll(spec, pageable);
+
+        Map<Long, UserResponse> userCache = fetchUsersForOrders(page.getContent());
+
+        return page.map(order -> {
+            OrderResponse response = orderMapper.toResponse(order);
+            response.setUser(userCache.get(order.getUserId()));
+            return response;
+        });
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<OrderResponse> getOrdersByUserId(Long userId) {
-        return orderRepository.findActiveByUserId(userId).stream().map(this::enrich).toList();
+        List<Order> orders = orderRepository.findActiveByUserId(userId);
+
+        UserResponse user = userServiceClient.getUserById(userId).orElse(null);
+
+        return orders.stream().map(order -> {
+                    OrderResponse response = orderMapper.toResponse(order);
+                    response.setUser(user);
+                    return response;
+                }).toList();
     }
 
     @Override
@@ -95,7 +114,7 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus(request.getStatus());
         Order updated = orderRepository.save(order);
         log.info("Updated order {} to status {}", id, request.getStatus());
-        return enrich(updated);
+        return enrichOne(updated);
     }
 
     @Override
@@ -116,14 +135,30 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
-     * Enriches an Order entity with user info from User Service.
-     * If User Service is unavailable (circuit open), user field is null.
+     * Enriches a single Order with user info — one User Service call.
+     * Used for single-order endpoints (create, getById, update).
      */
-    private OrderResponse enrich(Order order) {
+    private OrderResponse enrichOne(Order order) {
         OrderResponse response = orderMapper.toResponse(order);
-        Optional<UserResponse> user = userServiceClient.getUserById(order.getUserId());
-        user.ifPresent(response::setUser);
+        userServiceClient.getUserById(order.getUserId()).ifPresent(response::setUser);
         return response;
+    }
+
+    /**
+     * Fetches users for a collection of orders in the minimum number of
+     * User Service calls — one call per unique userId rather than one per order.
+     *
+     * @param orders the list of orders to fetch users for
+     * @return a map of userId to UserResponse (absent users are not in the map)
+     */
+    private Map<Long, UserResponse> fetchUsersForOrders(List<Order> orders) {
+        Set<Long> uniqueUserIds = orders.stream().map(Order::getUserId).collect(Collectors.toSet());
+
+        return uniqueUserIds.stream()
+                .map(userId -> userServiceClient.getUserById(userId)
+                        .map(user -> Map.entry(userId, user)).orElse(null))
+                .filter(entry -> entry != null)
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
 }

@@ -4,7 +4,6 @@ import lombok.Data;
 
 import java.time.LocalDate;
 
-// Represents the user info returned by User Service
 @Data
 public class UserResponse {
   private Long id;

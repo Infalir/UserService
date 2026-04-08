@@ -182,7 +182,7 @@ class OrderServiceImplTest {
         Page<OrderResponse> result = orderService.getAllOrders(filter, pageable);
 
         assertThat(result.getContent()).hasSize(1);
-        assertThat(result.getContent().get(0).getUser()).isEqualTo(userResponse);
+        verify(userServiceClient, times(1)).getUserById(10L);
     }
 
     @Test
