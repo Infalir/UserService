@@ -58,6 +58,22 @@ class OrderIntegrationTest extends BaseIntegrationTest {
                                   "active": true
                                 }
                                 """)));
+
+        wireMockServer.stubFor(WireMock.get(urlPathEqualTo("/api/v1/users/batch"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("""
+                                [
+                                  {
+                                    "id": 10,
+                                    "name": "John",
+                                    "surname": "Doe",
+                                    "email": "john@example.com",
+                                    "active": true
+                                  }
+                                ]
+                                """)));
     }
 
     private CreateOrderRequest buildCreateRequest(Long userId, Long itemId, int quantity) {
@@ -97,11 +113,13 @@ class OrderIntegrationTest extends BaseIntegrationTest {
         wireMockServer.stubFor(WireMock.get(urlPathEqualTo("/api/v1/users/99"))
                 .willReturn(aResponse().withStatus(404)));
 
-        ResponseEntity<OrderResponse> response = restTemplate.postForEntity(
-                BASE_URL, buildCreateRequest(99L, savedItem.getId(), 1), OrderResponse.class);
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                BASE_URL,
+                buildCreateRequest(99L, savedItem.getId(), 1),
+                String.class
+        );
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        assertThat(response.getBody().getUser()).isNull();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
@@ -110,11 +128,26 @@ class OrderIntegrationTest extends BaseIntegrationTest {
         wireMockServer.stubFor(WireMock.get(urlPathEqualTo("/api/v1/users/10"))
                 .willReturn(aResponse().withStatus(503)));
 
-        ResponseEntity<OrderResponse> response = restTemplate.postForEntity(
-                BASE_URL, buildCreateRequest(10L, savedItem.getId(), 1), OrderResponse.class);
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                BASE_URL,
+                buildCreateRequest(10L, savedItem.getId(), 1),
+                String.class
+        );
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        assertThat(response.getBody().getUser()).isNull();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("POST /orders - returns 404 when user does not exist in User Service")
+    void createOrder_UserNotFound_Returns404() {
+        wireMockServer.stubFor(WireMock.get(urlPathEqualTo("/api/v1/users/99"))
+                .willReturn(aResponse().withStatus(404)));
+
+        ResponseEntity<ErrorResponse> response = restTemplate.postForEntity(
+                BASE_URL, buildCreateRequest(99L, savedItem.getId(), 1), ErrorResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody().getMessage()).contains("99");
     }
 
     @Test
@@ -287,7 +320,8 @@ class OrderIntegrationTest extends BaseIntegrationTest {
     void deleteOrder_Returns204() {
         OrderResponse created = createOrder(10L, savedItem.getId(), 1);
 
-        ResponseEntity<Void> response = restTemplate.exchange(BASE_URL + "/" + created.getId(),
+        ResponseEntity<Void> response = restTemplate.exchange(
+                BASE_URL + "/" + created.getId(),
                 HttpMethod.DELETE, HttpEntity.EMPTY, Void.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
@@ -311,7 +345,8 @@ class OrderIntegrationTest extends BaseIntegrationTest {
         OrderResponse created = createOrder(10L, savedItem.getId(), 1);
         restTemplate.delete(BASE_URL + "/" + created.getId());
 
-        ResponseEntity<ErrorResponse> response = restTemplate.exchange(BASE_URL + "/" + created.getId(),
+        ResponseEntity<ErrorResponse> response = restTemplate.exchange(
+                BASE_URL + "/" + created.getId(),
                 HttpMethod.DELETE, HttpEntity.EMPTY, ErrorResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.GONE);
@@ -321,8 +356,11 @@ class OrderIntegrationTest extends BaseIntegrationTest {
     @DisplayName("Circuit breaker - order response still contains order data when User Service times out")
     void circuitBreaker_UserServiceTimeout_OrderDataStillPresent() {
         wireMockServer.stubFor(WireMock.get(urlPathEqualTo("/api/v1/users/10"))
-                .willReturn(aResponse().withStatus(200).withFixedDelay(5000)
-                        .withHeader("Content-Type", "application/json").withBody("{}")));
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withFixedDelay(5000)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{}")));
 
         ResponseEntity<OrderResponse> response = restTemplate.postForEntity(
                 BASE_URL, buildCreateRequest(10L, savedItem.getId(), 1), OrderResponse.class);

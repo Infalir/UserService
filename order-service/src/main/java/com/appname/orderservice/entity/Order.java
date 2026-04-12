@@ -2,6 +2,7 @@ package com.appname.orderservice.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -39,6 +40,7 @@ public class Order extends BaseEntity {
     private Boolean deleted = false;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @BatchSize(size = 50)
     @Builder.Default
     private List<OrderItem> orderItems = new ArrayList<>();
 

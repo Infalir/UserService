@@ -1,10 +1,7 @@
 package com.appname.orderservice.exception.handler;
 
 import com.appname.orderservice.dto.response.ErrorResponse;
-import com.appname.orderservice.exception.InvalidOrderStatusException;
-import com.appname.orderservice.exception.ItemNotFoundException;
-import com.appname.orderservice.exception.OrderAlreadyDeletedException;
-import com.appname.orderservice.exception.ResourceNotFoundException;
+import com.appname.orderservice.exception.*;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -24,6 +21,12 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(ResourceNotFoundException.class)
   public ResponseEntity<ErrorResponse> handleNotFound(ResourceNotFoundException ex, HttpServletRequest request) {
     log.warn("Resource not found: {}", ex.getMessage());
+    return build(HttpStatus.NOT_FOUND, ex.getMessage(), request);
+  }
+
+  @ExceptionHandler(UserNotFoundException.class)
+  public ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFoundException ex, HttpServletRequest request) {
+    log.warn("User not found: {}", ex.getMessage());
     return build(HttpStatus.NOT_FOUND, ex.getMessage(), request);
   }
 
