@@ -59,7 +59,6 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public OrderResponse getOrderById(Long id) {
         Order order = persistenceService.loadOrderById(id);
 
@@ -70,7 +69,6 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Page<OrderResponse> getAllOrders(OrderFilterRequest filter, Pageable pageable) {
 
         Page<Order> page = persistenceService.loadOrdersPage(filter, pageable);
@@ -92,7 +90,6 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<OrderResponse> getOrdersByUserId(Long userId) {
         List<Order> orders = persistenceService.loadOrdersByUserId(userId);
 
@@ -106,7 +103,6 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional
     public OrderResponse updateOrder(Long id, UpdateOrderRequest request) {
         Order updated = persistenceService.updateOrder(id, request);
 
@@ -117,7 +113,6 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional
     public void deleteOrder(Long id) {
         persistenceService.softDeleteOrder(id);
     }
