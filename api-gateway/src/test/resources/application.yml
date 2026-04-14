@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: api-gateway
+  profiles:
+    active: local
+  main:
+    web-application-type: reactive
+
+jwt:
+    secret: rO9jApAZfCAq3M4TXbJaRwGUCcIvrR9ac3G8nYv0egq4dh623ojwa0pElGqOf0txbTLz6tW7lpL7JNEwLYpkFv
