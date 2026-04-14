@@ -113,6 +113,12 @@ public class UserServiceImpl implements UserService {
     return userMapper.toResponse(updated);
   }
 
+  @Override
+  @Transactional(readOnly = true)
+  public List<UserResponse> getUsersByIds(List<Long> ids) {
+    return userRepository.findAllById(ids).stream().map(userMapper::toResponse).toList();
+  }
+
   private User findUserOrThrow(Long id) {
     return userRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("User", id));
   }

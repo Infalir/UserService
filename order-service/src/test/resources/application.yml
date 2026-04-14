@@ -1,0 +1,33 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    enabled: true
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      userService:
+        sliding-window-size: 100
+        minimum-number-of-calls: 100
+        failure-rate-threshold: 100
+        wait-duration-in-open-state: 1s
+        ignore-exceptions:
+          - org.springframework.web.reactive.function.client.WebClientResponseException
+  timelimiter:
+    instances:
+      userService:
+        timeout-duration: 10s
+
+logging:
+  level:
+    com.appname.orderservice: DEBUG
