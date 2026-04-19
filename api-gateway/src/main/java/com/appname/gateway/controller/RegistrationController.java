@@ -1,34 +1,44 @@
 package com.appname.gateway.controller;
 
 import com.appname.gateway.dto.request.RegisterRequest;
-import com.appname.gateway.dto.response.RegisterResponse;
-import com.appname.gateway.service.RegistrationService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 /**
- * Handles the custom user registration flow at the gateway level.
+ * Thin proxy controller for the registration endpoint.
  *
- * @apiNote {@code POST /api/v1/gateway/register}
+ * @apiNote {@code POST /api/v1/gateway/register} → forwarded to auth-service
+ *          {@code POST /api/v1/auth/register}
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/gateway")
 @RequiredArgsConstructor
 public class RegistrationController {
-  private final RegistrationService registrationService;
+
+  private final WebClient.Builder webClientBuilder;
+
+  @Value("${services.auth-service.base-url}")
+  private String authServiceUrl;
 
   /**
-   * Registers a new user by creating their profile and credentials atomically.
-   *
-   * @param request registration payload with user profile data and login/password
-   * @return {@code 201 Created} with userId, login, and success message
+   * Forwards the registration request to auth-service.
    */
   @PostMapping("/register")
-  @ResponseStatus(HttpStatus.CREATED)
-  public Mono<RegisterResponse> register(@RequestBody RegisterRequest request) {
-    return registrationService.register(request);
+  public Mono<ResponseEntity<Object>> register(@RequestBody RegisterRequest request) {
+    log.debug("Forwarding registration request to auth-service");
+    return webClientBuilder.baseUrl(authServiceUrl).build().post()
+            .uri("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request).exchangeToMono(response -> response.toEntity(Object.class));
   }
 
 }

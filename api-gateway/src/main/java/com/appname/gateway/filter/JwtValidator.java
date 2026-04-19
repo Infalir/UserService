@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -11,12 +12,23 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 
+/**
+ * Validates JWT tokens locally using the shared secret.
+ *
+ */
 @Slf4j
 @Component
 public class JwtValidator {
 
   @Value("${jwt.secret}")
   private String jwtSecret;
+
+  private SecretKey signingKey;
+
+  @PostConstruct
+  void init() {
+    this.signingKey = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+  }
 
   public boolean isValid(String token) {
     try {
@@ -34,8 +46,6 @@ public class JwtValidator {
 
   public String extractUserId(String token) {
     Object userId = parseClaims(token).get("userId");
-    if (userId instanceof Integer i) return String.valueOf(i.longValue());
-    if (userId instanceof Long l) return String.valueOf(l);
     return String.valueOf(userId);
   }
 
@@ -44,10 +54,7 @@ public class JwtValidator {
   }
 
   private Claims parseClaims(String token) {
-    return Jwts.parser().verifyWith(signingKey()).build().parseSignedClaims(token).getPayload();
+    return Jwts.parser().verifyWith(signingKey).build().parseSignedClaims(token).getPayload();
   }
 
-  private SecretKey signingKey() {
-    return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
-  }
 }

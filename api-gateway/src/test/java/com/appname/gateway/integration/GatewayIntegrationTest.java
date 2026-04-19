@@ -7,7 +7,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -20,11 +19,15 @@ import java.util.Map;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 
 class GatewayIntegrationTest extends BaseIntegrationTest {
+
   @Autowired
   private WebTestClient webTestClient;
 
-  @Value("${jwt.secret}")
-  private String secret;
+  private static final String SECRET = "rO9jApAZfCAq3M4TXbJaRwGUCcIvrR9ac3G8nYv0egq4dh623ojwa0pElGqOf0txbTLz6tW7lpL7JNEwLYpkFv";
+
+  private static final String REGISTER_BODY =
+          "{\"name\":\"John\",\"surname\":\"Doe\",\"email\":\"j@e.com\"," +
+                  "\"birthDate\":\"1990-01-01\",\"login\":\"john\",\"password\":\"pass123\"}";
 
   @BeforeEach
   void resetMocks() {
@@ -34,7 +37,7 @@ class GatewayIntegrationTest extends BaseIntegrationTest {
   }
 
   private String buildToken(long userId, String role, long expiryMs) {
-    SecretKey key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    SecretKey key = Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
     return Jwts.builder().subject("testuser")
             .claims(Map.of("userId", userId, "role", role)).issuedAt(new Date())
             .expiration(new Date(System.currentTimeMillis() + expiryMs)).signWith(key)
@@ -96,19 +99,16 @@ class GatewayIntegrationTest extends BaseIntegrationTest {
   }
 
   @Test
-  @DisplayName("Filter - register endpoint is public (no JWT required)")
+  @DisplayName("Filter - register endpoint is public (no JWT required, proxied to auth-service)")
   void filter_RegisterEndpoint_IsPublic() {
-    userServiceMock.stubFor(WireMock.post(urlPathEqualTo("/api/v1/users"))
-            .willReturn(aResponse().withStatus(201).withHeader("Content-Type", "application/json")
-                    .withBody("{\"id\":1,\"name\":\"John\"}")));
-
-    authServiceMock.stubFor(WireMock.post(urlPathEqualTo("/api/v1/auth/credentials"))
-            .willReturn(aResponse().withStatus(201)));
+    authServiceMock.stubFor(WireMock.post(urlPathEqualTo("/api/v1/auth/register"))
+            .willReturn(aResponse().withStatus(201)
+                    .withHeader("Content-Type", "application/json")
+                    .withBody("{\"userId\":1,\"login\":\"john\",\"message\":\"Registration successful\"}")));
 
     webTestClient.post().uri("/api/v1/gateway/register")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue("{\"name\":\"John\",\"surname\":\"Doe\",\"email\":\"j@e.com\"," +
-                    "\"birthDate\":\"1990-01-01\",\"login\":\"john\",\"password\":\"pass123\"}")
+            .bodyValue(REGISTER_BODY)
             .exchange().expectStatus().isCreated();
   }
 
@@ -143,20 +143,16 @@ class GatewayIntegrationTest extends BaseIntegrationTest {
   }
 
   @Test
-  @DisplayName("Register - creates user and credentials, returns 201")
+  @DisplayName("Register - gateway proxies to auth-service, returns 201 on success")
   void register_Success_Returns201() {
-    userServiceMock.stubFor(WireMock.post(urlPathEqualTo("/api/v1/users"))
+    authServiceMock.stubFor(WireMock.post(urlPathEqualTo("/api/v1/auth/register"))
             .willReturn(aResponse().withStatus(201)
                     .withHeader("Content-Type", "application/json")
-                    .withBody("{\"id\":10,\"name\":\"John\",\"email\":\"j@e.com\"}")));
-
-    authServiceMock.stubFor(WireMock.post(urlPathEqualTo("/api/v1/auth/credentials"))
-            .willReturn(aResponse().withStatus(201)));
+                    .withBody("{\"userId\":10,\"login\":\"john\",\"message\":\"Registration successful\"}")));
 
     webTestClient.post().uri("/api/v1/gateway/register")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue("{\"name\":\"John\",\"surname\":\"Doe\",\"email\":\"j@e.com\"," +
-                    "\"birthDate\":\"1990-01-01\",\"login\":\"john\",\"password\":\"pass123\"}")
+            .bodyValue(REGISTER_BODY)
             .exchange().expectStatus().isCreated()
             .expectBody()
             .jsonPath("$.userId").isEqualTo(10)
@@ -165,45 +161,33 @@ class GatewayIntegrationTest extends BaseIntegrationTest {
   }
 
   @Test
-  @DisplayName("Register - rolls back user when Auth Service fails, returns 500")
+  @DisplayName("Register - gateway passes through auth-service 500 error response")
   void register_AuthFails_RollsBackAndReturns500() {
-    userServiceMock.stubFor(WireMock.post(urlPathEqualTo("/api/v1/users"))
-            .willReturn(aResponse().withStatus(201)
+    authServiceMock.stubFor(WireMock.post(urlPathEqualTo("/api/v1/auth/register"))
+            .willReturn(aResponse().withStatus(500)
                     .withHeader("Content-Type", "application/json")
-                    .withBody("{\"id\":10,\"name\":\"John\",\"email\":\"j@e.com\"}")));
-
-    authServiceMock.stubFor(WireMock.post(urlPathEqualTo("/api/v1/auth/credentials"))
-            .willReturn(aResponse().withStatus(500).withBody("Auth error")));
-
-    userServiceMock.stubFor(WireMock.delete(urlPathEqualTo("/api/v1/users/10"))
-            .willReturn(aResponse().withStatus(200)));
+                    .withBody("{\"status\":500,\"message\":\"Registration failed: could not save credentials. User creation has been rolled back.\"}")));
 
     webTestClient.post().uri("/api/v1/gateway/register")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue("{\"name\":\"John\",\"surname\":\"Doe\",\"email\":\"j@e.com\"," +
-                    "\"birthDate\":\"1990-01-01\",\"login\":\"john\",\"password\":\"pass123\"}")
+            .bodyValue(REGISTER_BODY)
             .exchange().expectStatus().is5xxServerError()
             .expectBody()
-            .jsonPath("$.message").value(msg ->
-                    org.assertj.core.api.Assertions.assertThat(msg.toString())
-                            .contains("rolled back"));
-
-    userServiceMock.verify(deleteRequestedFor(urlPathEqualTo("/api/v1/users/10")));
+            .jsonPath("$.status").isEqualTo(500);
   }
 
   @Test
-  @DisplayName("Register - returns error when User Service fails (no rollback needed)")
+  @DisplayName("Register - gateway passes through auth-service 409 conflict response")
   void register_UserServiceFails_ReturnsError() {
-    userServiceMock.stubFor(WireMock.post(urlPathEqualTo("/api/v1/users"))
-            .willReturn(aResponse().withStatus(409).withBody("Email taken")));
+    authServiceMock.stubFor(WireMock.post(urlPathEqualTo("/api/v1/auth/register")).willReturn(aResponse()
+                    .withStatus(409).withHeader("Content-Type", "application/json")
+                    .withBody("{\"status\":409,\"message\":\"Email already exists\"}")));
 
     webTestClient.post().uri("/api/v1/gateway/register")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue("{\"name\":\"John\",\"surname\":\"Doe\",\"email\":\"j@e.com\"," +
-                    "\"birthDate\":\"1990-01-01\",\"login\":\"john\",\"password\":\"pass123\"}")
-            .exchange().expectStatus().is4xxClientError();
+            .bodyValue(REGISTER_BODY).exchange().expectStatus().isEqualTo(409);
 
-    authServiceMock.verify(0, postRequestedFor(urlPathEqualTo("/api/v1/auth/credentials")));
+    authServiceMock.verify(1, postRequestedFor(urlPathEqualTo("/api/v1/auth/register")));
   }
 
 }

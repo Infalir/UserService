@@ -1,4 +1,4 @@
-package com.appname.gateway.exception;
+package com.appname.authservice.exception;
 
 import org.springframework.http.HttpStatus;
 
@@ -10,5 +10,8 @@ public class RegistrationException extends RuntimeException {
     this.status = status;
   }
 
-  public HttpStatus getStatus() { return status; }
+  public HttpStatus getStatus() {
+    return status;
+  }
+
 }

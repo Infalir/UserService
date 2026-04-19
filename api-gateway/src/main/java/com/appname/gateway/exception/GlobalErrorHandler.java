@@ -2,8 +2,6 @@ package com.appname.gateway.exception;
 
 import com.appname.gateway.dto.response.ErrorResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler;
 import org.springframework.core.annotation.Order;
@@ -17,16 +15,21 @@ import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 
+/**
+ * Global exception handler for the reactive gateway.
+ *
+ * <p>Catches all exceptions from gateway filters and controllers and
+ * formats them as a consistent JSON {@link ErrorResponse}. {@code @Order(-1)}
+ * ensures this runs before Spring Boot's default error handler.</p>
+ */
 @Slf4j
 @Order(-1)
 @Component
 public class GlobalErrorHandler implements ErrorWebExceptionHandler {
   private final ObjectMapper objectMapper;
 
-  public GlobalErrorHandler() {
-    this.objectMapper = new ObjectMapper();
-    this.objectMapper.registerModule(new JavaTimeModule());
-    this.objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+  public GlobalErrorHandler(ObjectMapper objectMapper) {
+    this.objectMapper = objectMapper;
   }
 
   @Override
@@ -36,10 +39,7 @@ public class GlobalErrorHandler implements ErrorWebExceptionHandler {
     HttpStatus status;
     String message;
 
-    if (ex instanceof RegistrationException re) {
-      status  = re.getStatus();
-      message = re.getMessage();
-    } else if (ex instanceof GatewayAuthException ae) {
+    if (ex instanceof GatewayAuthException ae) {
       status  = ae.getStatus();
       message = ae.getMessage();
     } else if (ex instanceof ResponseStatusException rse) {
@@ -50,9 +50,14 @@ public class GlobalErrorHandler implements ErrorWebExceptionHandler {
       message = "An unexpected gateway error occurred";
     }
 
-    ErrorResponse body = ErrorResponse.builder().status(status.value()).error(status.getReasonPhrase())
-            .message(message).path(exchange.getRequest().getURI().getPath()).timestamp(LocalDateTime.now())
-            .build();
+    return writeErrorResponse(exchange, status, message);
+  }
+
+  public Mono<Void> writeErrorResponse(ServerWebExchange exchange, HttpStatus status, String message) {
+
+    ErrorResponse body = ErrorResponse.builder().status(status.value())
+            .error(status.getReasonPhrase()).message(message)
+            .path(exchange.getRequest().getURI().getPath()).timestamp(LocalDateTime.now()).build();
 
     exchange.getResponse().setStatusCode(status);
     exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
@@ -60,7 +65,6 @@ public class GlobalErrorHandler implements ErrorWebExceptionHandler {
     try {
       byte[] bytes = objectMapper.writeValueAsBytes(body);
       DataBuffer buffer = exchange.getResponse().bufferFactory().wrap(bytes);
-
       return exchange.getResponse().writeWith(Mono.just(buffer));
     } catch (Exception e) {
       return Mono.error(e);
