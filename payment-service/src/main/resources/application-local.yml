@@ -1,0 +1,45 @@
+spring:
+  data:
+    mongodb:
+      uri: mongodb://${MONGO_HOST:localhost}:${MONGO_PORT:27017}/${MONGO_DB:paymentservice}
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.trusted.packages: "com.appname.paymentservice.kafka"
+
+kafka:
+  topics:
+    payment-events: payment-events
+
+server:
+  port: ${SERVER_PORT:8085}
+
+external:
+  random-api:
+    url: ${RANDOM_API_URL:https://www.random.org/integers/?num=1&min=1&max=100&col=1&base=10&format=plain&rnd=new}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      randomApi:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.appname.paymentservice: DEBUG

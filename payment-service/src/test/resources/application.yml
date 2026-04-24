@@ -1,0 +1,27 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+
+logging:
+  level:
+    com.appname.paymentservice: DEBUG
+    org.springframework.kafka: WARN
+
+kafka:
+  topics:
+    payment-events: test-topic
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      randomApi:
+        sliding-window-size: 100
+        minimum-number-of-calls: 100
+        failure-rate-threshold: 100
+        ignore-exceptions:
+          - org.springframework.web.reactive.function.client.WebClientResponseException
+  timelimiter:
+    instances:
+      randomApi:
+        timeout-duration: 5s
