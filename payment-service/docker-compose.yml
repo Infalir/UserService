@@ -1,0 +1,81 @@
+version: "3.9"
+
+services:
+
+  payment-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: payment-service:latest
+    container_name: payment-service
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      MONGO_HOST: payment-mongo
+      MONGO_PORT: 27017
+      MONGO_DB: paymentservice
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SERVER_PORT: 8085
+    depends_on:
+      payment-mongo:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - payment-service-net
+    restart: unless-stopped
+
+  payment-mongo:
+    image: mongo:7.0
+    container_name: payment-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - payment_mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - payment-service-net
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - payment-service-net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    depends_on:
+      - zookeeper
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    networks:
+      - payment-service-net
+
+volumes:
+  payment_mongo_data:
+
+networks:
+  payment-service-net:
+    driver: bridge
