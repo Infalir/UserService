@@ -9,10 +9,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.concurrent.CompletableFuture;
 
-/**
- * Kafka producer that sends CREATE_PAYMENT events after a payment is processed.
- * Order Service consumes these events to update order status asynchronously.
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor

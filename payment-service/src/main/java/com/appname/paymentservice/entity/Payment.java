@@ -11,7 +11,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Document(collection = "payments")
-// Compound index for date-range aggregation queries per user
 @CompoundIndex(name = "idx_user_timestamp", def = "{'user_id': 1, 'timestamp': -1}")
 @Getter
 @Setter
