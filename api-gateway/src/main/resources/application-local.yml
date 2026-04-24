@@ -1,0 +1,27 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+jwt:
+  secret: ${JWT_SECRET:your-secret-key-that-must-be-at-least-64-characters-long-for-hmac-sha256!!}
+
+services:
+  auth-service:
+    base-url: ${AUTH_SERVICE_URL:http://localhost:8081}
+  user-service:
+    base-url: ${USER_SERVICE_URL:http://localhost:8083}
+  order-service:
+    base-url: ${ORDER_SERVICE_URL:http://localhost:8084}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gateway
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.appname.gateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG

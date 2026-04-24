@@ -1,4 +1,4 @@
-name: Auth Service CI
+name: API Gateway CI
 
 on:
   push:
@@ -8,28 +8,13 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/auth-service
+  IMAGE_NAME: ${{ github.repository }}/api-gateway
   JAVA_VERSION: '21'
 
 jobs:
   build-and-test:
     name: Build & Test
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: authservice_test
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     steps:
       - name: Checkout code
@@ -43,45 +28,38 @@ jobs:
           cache: maven
 
       - name: Build with Maven
-        working-directory: auth-service
+        working-directory: api-gateway
         run: mvn clean compile -B
 
       - name: Run Unit Tests
-        working-directory: auth-service
+        working-directory: api-gateway
         run: mvn test -B -Dtest="**/*Test" -DfailIfNoTests=false
         env:
-          JWT_SECRET: test-secret-key-that-is-at-least-256-bits-long-for-hmac-sha-algorithm
-          JWT_ACCESS_EXPIRATION_MS: 900000
-          JWT_REFRESH_EXPIRATION_MS: 604800000
+          JWT_SECRET: rO9jApAZfCAq3M4TXbJaRwGUCcIvrR9ac3G8nYv0egq4dh623ojwa0pElGqOf0txbTLz6tW7lpL7JNEwLYpkFv
 
       - name: Run Integration Tests
-        working-directory: auth-service
+        working-directory: api-gateway
         run: mvn test -B -Dtest="**/*IntegrationTest" -DfailIfNoTests=false
         env:
+          JWT_SECRET: rO9jApAZfCAq3M4TXbJaRwGUCcIvrR9ac3G8nYv0egq4dh623ojwa0pElGqOf0txbTLz6tW7lpL7JNEwLYpkFv
           SPRING_PROFILES_ACTIVE: local
-          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/authservice_test
-          SPRING_DATASOURCE_USERNAME: test
-          SPRING_DATASOURCE_PASSWORD: test
-          JWT_SECRET: test-secret-key-that-is-at-least-256-bits-long-for-hmac-sha-algorithm
-          JWT_ACCESS_EXPIRATION_MS: 900000
-          JWT_REFRESH_EXPIRATION_MS: 604800000
 
       - name: Generate JaCoCo Coverage Report
-        working-directory: auth-service
+        working-directory: api-gateway
         run: mvn jacoco:report -B
 
       - name: Upload Test Results
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: auth-test-results
-          path: auth-service/target/surefire-reports/
+          name: gateway-test-results
+          path: api-gateway/target/surefire-reports/
 
       - name: Upload Coverage Report
         uses: actions/upload-artifact@v4
         with:
-          name: auth-coverage-report
-          path: auth-service/target/site/jacoco/
+          name: gateway-coverage-report
+          path: api-gateway/target/site/jacoco/
 
   code-analysis:
     name: SonarCloud Analysis
@@ -108,29 +86,14 @@ jobs:
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
 
-      - name: Validate Sonar secrets
-        run: |
-          if [ -z "${{ secrets.SONAR_TOKEN }}" ]; then
-            echo "ERROR: SONAR_TOKEN secret is not set"; exit 1
-          fi
-          if [ -z "${{ secrets.SONAR_ORGANIZATION }}" ]; then
-            echo "ERROR: SONAR_ORGANIZATION secret is not set"; exit 1
-          fi
-          if [ -z "${{ secrets.SONAR_AUTH_PROJECT_KEY }}" ]; then
-            echo "ERROR: SONAR_AUTH_PROJECT_KEY secret is not set"; exit 1
-          fi
-          echo "All Sonar secrets present"
-
-      - name: Build and analyze with SonarCloud
-        working-directory: auth-service
+      - name: Analyze with SonarCloud
+        working-directory: api-gateway
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
-          SONAR_PROJECT_KEY: ${{ secrets.SONAR_AUTH_PROJECT_KEY }}
+          SONAR_PROJECT_KEY: ${{ secrets.SONAR_GATEWAY_PROJECT_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          JWT_SECRET: test-secret-key-that-is-at-least-256-bits-long-for-hmac-sha-algorithm
-          JWT_ACCESS_EXPIRATION_MS: 900000
-          JWT_REFRESH_EXPIRATION_MS: 604800000
+          JWT_SECRET: rO9jApAZfCAq3M4TXbJaRwGUCcIvrR9ac3G8nYv0egq4dh623ojwa0pElGqOf0txbTLz6tW7lpL7JNEwLYpkFv
         run: |
           mvn verify sonar:sonar \
             -Dsonar.projectKey="${SONAR_PROJECT_KEY}" \
@@ -138,14 +101,12 @@ jobs:
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.token="${SONAR_TOKEN}" \
             -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
-            -DskipTests \
-            -B
+            -DskipTests -B
 
   docker-build:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
     needs: [ build-and-test ]
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
 
     permissions:
       contents: read
@@ -163,12 +124,10 @@ jobs:
           cache: maven
 
       - name: Build JAR
-        working-directory: auth-service
+        working-directory: api-gateway
         run: mvn package -DskipTests -B
         env:
-          JWT_SECRET: build-time-placeholder-not-used-at-runtime
-          JWT_ACCESS_EXPIRATION_MS: 900000
-          JWT_REFRESH_EXPIRATION_MS: 604800000
+          JWT_SECRET: build-time-placeholder
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -193,8 +152,8 @@ jobs:
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
         with:
-          context: ./auth-service
-          file: ./auth-service/Dockerfile
+          context: ./api-gateway
+          file: ./api-gateway/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

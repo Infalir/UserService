@@ -1,10 +1,7 @@
 package com.appname.authservice.exception.handler;
 
 import com.appname.authservice.dto.response.ErrorResponse;
-import com.appname.authservice.exception.AccountDisabledException;
-import com.appname.authservice.exception.DuplicateCredentialsException;
-import com.appname.authservice.exception.InvalidCredentialsException;
-import com.appname.authservice.exception.InvalidTokenException;
+import com.appname.authservice.exception.*;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.UnsupportedJwtException;
@@ -30,6 +27,7 @@ import java.util.Map;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleInvalidCredentials(
             InvalidCredentialsException ex, HttpServletRequest request) {
@@ -129,9 +127,20 @@ public class GlobalExceptionHandler {
             errors.put(field, error.getDefaultMessage());
         });
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
-                ErrorResponse.builder().status(HttpStatus.BAD_REQUEST.value()).error("Validation Failed")
-                        .message("Request validation failed").path(request.getRequestURI()).timestamp(LocalDateTime.now())
+                ErrorResponse.builder().status(HttpStatus.BAD_REQUEST.value())
+                        .error("Validation Failed").message("Request validation failed")
+                        .path(request.getRequestURI()).timestamp(LocalDateTime.now())
                         .validationErrors(errors).build()
+        );
+    }
+
+    @ExceptionHandler(RegistrationException.class)
+    public ResponseEntity<ErrorResponse> handleRegistration(RegistrationException ex, HttpServletRequest request) {
+        log.error("Registration saga failed: {}", ex.getMessage());
+        return ResponseEntity.status(ex.getStatus()).body(
+                ErrorResponse.builder().status(ex.getStatus().value())
+                        .error(ex.getStatus().getReasonPhrase()).message(ex.getMessage())
+                        .path(request.getRequestURI()).timestamp(java.time.LocalDateTime.now()).build()
         );
     }
 

@@ -1,0 +1,27 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+jwt:
+  secret: ${JWT_SECRET}
+
+services:
+  auth-service:
+    base-url: ${AUTH_SERVICE_URL:http://auth-service:8081}
+  user-service:
+    base-url: ${USER_SERVICE_URL:http://user-service:8083}
+  order-service:
+    base-url: ${ORDER_SERVICE_URL:http://order-service:8084}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gateway
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.appname.gateway: INFO
+    org.springframework.cloud.gateway: WARN

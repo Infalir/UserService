@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: api-gateway
+  profiles:
+    active: local
+  main:
+    web-application-type: reactive
