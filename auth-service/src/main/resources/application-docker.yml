@@ -33,11 +33,21 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
   endpoint:
     health:
+      probes:
+        enabled: true
       show-details: always
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
 
 logging:
   level:
     com.appname.authservice: INFO
+services:
+  user-service:
+    base-url: ${USER_SERVICE_URL:http://user-service:8083}

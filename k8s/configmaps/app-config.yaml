@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-service-config
+  namespace: microservices
+data:
+  SPRING_PROFILES_ACTIVE: "docker"
+  DB_HOST: "postgres-user.infra.svc.cluster.local"
+  DB_PORT: "5432"
+  DB_NAME: "userservice"
+  DB_USERNAME: "postgres"
+  REDIS_HOST: "redis.infra.svc.cluster.local"
+  REDIS_PORT: "6379"
+  SERVER_PORT: "8083"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-service-config
+  namespace: microservices
+data:
+  SPRING_PROFILES_ACTIVE: "docker"
+  DB_HOST: "postgres-auth.infra.svc.cluster.local"
+  DB_PORT: "5432"
+  DB_NAME: "authservice"
+  DB_USERNAME: "postgres"
+  USER_SERVICE_URL: "http://user-service.microservices.svc.cluster.local:8083"
+  SERVER_PORT: "8081"
+  JWT_ACCESS_EXPIRATION_MS: "900000"
+  JWT_REFRESH_EXPIRATION_MS: "604800000"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-service-config
+  namespace: microservices
+data:
+  SPRING_PROFILES_ACTIVE: "docker"
+  DB_HOST: "postgres-order.infra.svc.cluster.local"
+  DB_PORT: "5432"
+  DB_NAME: "orderservice"
+  DB_USERNAME: "postgres"
+  USER_SERVICE_URL: "http://user-service.microservices.svc.cluster.local:8083"
+  KAFKA_BOOTSTRAP_SERVERS: "kafka.infra.svc.cluster.local:9092"
+  SERVER_PORT: "8084"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: payment-service-config
+  namespace: microservices
+data:
+  SPRING_PROFILES_ACTIVE: "docker"
+  MONGO_HOST: "mongodb.infra.svc.cluster.local"
+  MONGO_PORT: "27017"
+  MONGO_DB: "paymentservice"
+  KAFKA_BOOTSTRAP_SERVERS: "kafka.infra.svc.cluster.local:9092"
+  SERVER_PORT: "8085"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-gateway-config
+  namespace: microservices
+data:
+  SPRING_PROFILES_ACTIVE: "docker"
+  AUTH_SERVICE_URL: "http://auth-service.microservices.svc.cluster.local:8081"
+  USER_SERVICE_URL: "http://user-service.microservices.svc.cluster.local:8083"
+  ORDER_SERVICE_URL: "http://order-service.microservices.svc.cluster.local:8084"
+  SERVER_PORT: "8080"

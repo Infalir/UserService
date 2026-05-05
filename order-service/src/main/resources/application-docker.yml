@@ -21,12 +21,22 @@ spring:
     change-log: classpath:db/changelog/db.changelog-master.yaml
     enabled: true
 
+  kafka:
+    bootstrap-servers: \${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    consumer:
+      group-id: order-service-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.appname.paymentservice.kafka,com.appname.orderservice.kafka"
+
 server:
-  port: ${SERVER_PORT:8082}
+  port: ${SERVER_PORT:8084}
 
 services:
   user-service:
-    base-url: ${USER_SERVICE_URL:http://user-service:8080}
+    base-url: ${USER_SERVICE_URL:http://user-service:8083}
 
 resilience4j:
   circuitbreaker:
@@ -47,14 +57,22 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,circuitbreakers
+        include: health,info,metrics,prometheus
   endpoint:
     health:
+      probes:
+        enabled: true
       show-details: always
   health:
-    circuitbreakers:
+    livenessstate:
+      enabled: true
+    readinessstate:
       enabled: true
 
 logging:
   level:
     com.appname.orderservice: INFO
+
+kafka:
+  topics:
+    payment-events: payment-events
